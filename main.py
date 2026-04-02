@@ -2,6 +2,8 @@ import csv
 from datetime import date
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
+from tkinter import font
 
 DRIVERS_FILE = "drivers.csv"
 TRANSACTIONS_FILE = "transactions.csv"
@@ -88,7 +90,7 @@ def load_transactions():
 
 def save_new_driver():
     # 1. Grab what the dispatcher typed
-    body_val = entry_number.get()
+    body_val = entry_admin_num.get()
     name_val = entry_name.get()
 
     # 2. Safety Check: If EITHER box is totally empty (""), don't save.
@@ -103,7 +105,7 @@ def save_new_driver():
         save_drivers()
         
         # 5. Clean up: Erase the entry boxes from start (0) to finish (tk.END)
-        entry_number.delete(0, tk.END)
+        entry_admin_num.delete(0, tk.END)
         entry_name.delete(0, tk.END)
         
         # update driver listbox
@@ -123,9 +125,40 @@ def update_driver_listbox():
         # 4. Insert it into the listbox
         listbox_drivers.insert(tk.END, display_text)
 
+def check_in_driver():
+    # Get the number from the Dashboard entry box
+    body_val = entry_checkin_num.get()
+
+    # Safety Check: Did they leave it blank?
+    if body_val == "":
+        messagebox.showwarning("Input Error", "Please enter a Body Number first.")
+        return
+
+    # Validation: Does this driver exist in the Admin Registry?
+    if body_val not in drivers_db:
+        messagebox.showerror("Not Found", f"Body Number {body_val} is not registered")
+        return
+
+    # 4. Logic: Is the driver already in line?
+    if body_val in shift_line:
+        messagebox.showinfo("Already In", f"Driver {body_val} is already in the queue.")
+        return
+
+    # 5. Success! Add them to the virtual list (the backend)
+    shift_line.append(body_val)
+
+    # 6. Success! Show them in the Listbox (the frontend)
+    # We look up the name from the dictionary to make it look nice
+    driver_name = drivers_db[body_val]
+    list_queue.insert(tk.END, f"{body_val} - {driver_name}")
+
+    # 7. Clean up the entry box
+    entry_checkin_num.delete(0, tk.END)
+
 root = tk.Tk()
 root.title("B.A.R.K.E.R. - Tricycle Dispatch System")
 root.geometry("1000x600") # Set a starting size for your app
+print(font.families())
 
 #  Create the notebook container
 notebook = ttk.Notebook(root)
@@ -145,9 +178,53 @@ notebook.add(tab_admin, text="Admin Registry")
 frame_left = tk.Frame(tab_dashboard, width=400, bd=2, relief="groove") 
 frame_left.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
+# Label For Body Number Entry Box
+lbl_entry_number = tk.Label(frame_left, text = "Enter Body Number:")
+lbl_entry_number.pack(pady = 10)
+
+# Entry Box for Body Number
+entry_checkin_num = tk.Entry(frame_left, bd = 2)
+entry_checkin_num.pack()
+
+# Check In Button
+button_checkIn = tk.Button(frame_left, text="Check In", command=check_in_driver)
+button_checkIn.pack(pady=15)
+
+list_queue = tk.Listbox(frame_left, bd = 1)
+list_queue.pack(pady = 10 ,padx = 10, fill = "both", expand ="True")
+
 #  Create a Right Frame for Stats/Logs
 frame_right = tk.Frame(tab_dashboard, width=600, bd=2, relief="groove")
 frame_right.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+# Dispatch Panel Label
+lbl_dispatch = tk.Label(frame_right, text="Dispatch Panel", font=("Century Gothic", 20))
+lbl_dispatch.pack(pady = 10)
+
+# The Variable to Track the Radio Buttons
+# This tells Python to remember which button is clicked. It defaults to "Regular".
+ride_type = tk.StringVar(value="Regular")
+
+# Radio Buttons
+radio_regular = tk.Radiobutton(frame_right, text="Regular (%40 - 4 Pax)", variable=ride_type, value="Regular")
+radio_regular.pack(anchor="w", padx=20, pady=5)
+
+radio_special = tk.Radiobutton(frame_right, text="Special (Custom Fare)", variable=ride_type, value="Special")
+radio_special.pack(anchor="w", padx=20, pady=5)
+
+# Entry Box for Special Fare
+lbl_special_fare = tk.Label(frame_right, text="If Special, enter amount (₱):")
+lbl_special_fare.pack(pady=(15, 0))
+
+entry_special_fare = tk.Entry(frame_right, bd=2)
+entry_special_fare.pack(pady=5)
+
+# Dispatch Button (We will add the command later!)
+button_dispatch = tk.Button(frame_right, text="Dispatch Tricycle", bg="green", fg="white", font=("Arial", 10, "bold"))
+button_dispatch.pack(pady=20)
+
+# Total Fare Label
+lbl_total_fare = tk.Label(frame_right)
 
 # ADMIN REGISTRY 
 
@@ -166,8 +243,8 @@ lbl_number = tk.Label(tab_admin, text="Body Number:")
 lbl_number.pack(pady=5)
 
 # Create Entry box for body number
-entry_number = tk.Entry(tab_admin)
-entry_number.pack(pady=5)
+entry_admin_num = tk.Entry(tab_admin)
+entry_admin_num.pack(pady=5)
 
 # Save button
 button_save = tk.Button(tab_admin, text="Save", command=save_new_driver)
